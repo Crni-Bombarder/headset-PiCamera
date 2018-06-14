@@ -20,8 +20,6 @@ Frame* copyFrame(Frame* frame);
 Frame* startVideoCapture(int device);
 void stopVideoCapture(void);
 
-void setCaptureFPS(double fps);
-void setCaptureResolution(double x, double y);
 double getCaptureFPS(void);
 void getCaptureResolution(double* x, double* y);
 
