@@ -94,17 +94,6 @@ void stopVideoCapture(void)
     cvReleaseCapture(&camera);
 }
 
-void setCaptureFPS(double fps)
-{
-    cvSetCaptureProperty(camera, CV_CAP_PROP_FPS, fps);
-}
-
-void setCaptureResolution(double x, double y)
-{
-    cvSetCaptureProperty(camera, CV_CAP_PROP_FRAME_WIDTH,  x);
-    cvSetCaptureProperty(camera, CV_CAP_PROP_FRAME_HEIGHT, y);
-}
-
 double getCaptureFPS(void)
 {
     return cvGetCaptureProperty(camera, CV_CAP_PROP_FPS);
