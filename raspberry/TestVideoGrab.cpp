@@ -6,12 +6,10 @@
 int main(int argc, char* argv[])
 {
     int key = 0;
-    double x, y;
-    Frame* frame = startVideoCapture(0);
+    Frame* frame = startVideoCapture(atoi(argv[1]));
 
     printf("FPS : %f\n", getCaptureFPS());
-    getCaptureResolution(&x, &y);
-    printf("Resolution : %fx%f\n", x, y);
+    printf("Resolution : %dx%d\nDepth : %d\n", frame->x, frame->y, frame->depth);
 
     while(key != 27)
     {
