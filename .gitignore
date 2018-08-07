@@ -3,4 +3,7 @@ lib
 CMakeFiles
 cmake_install.cmake
 CMakeCache.txt
+Makefile
+*.sdp
+log.txt
 *.a

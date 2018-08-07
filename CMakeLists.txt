@@ -3,19 +3,45 @@ project(headset-PiCamera)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 
-find_package(OpenCV REQUIRED)
-include_directories(raspberry/includes)
-include_directories(odroid/includes)
+find_package(FFmpeg REQUIRED)
+find_package(SDL2 REQUIRED)
+find_package(Threads REQUIRED)
+
+include_directories(common/includes
+                    raspberry/includes
+                    odroid/includes
+                    ${LIBAVUTIL_INCLUDE_DIR}
+                    ${LIBAVCODEC_INCLUDE_DIR}
+                    ${LIBAVFORMAT_INCLUDE_DIR}
+                    ${LIBAVDEVICE_INCLUDE_DIR}
+                    ${SDL2_INCLUDE_DIRS})
+
 file(
         GLOB_RECURSE
         source_files
-        raspberry/*
-        odroid/*
+        common/*
 )
 
-add_library(RASPBERRY raspberry/src/VideoGrab.cpp)
-target_link_libraries(RASPBERRY ${OpenCV_LIBS})
+add_library(COMMON  common/Frame.c
+                    common/Packet.c)
+#target_link_libraries(COMMON)
 
-add_executable(TestVideoGrab raspberry/TestVideoGrab.cpp)
-target_link_libraries(TestVideoGrab ${OpenCV_LIBS} RASPBERRY)
+add_library(RASPBE  raspberry/UDPStreaming.c
+                    raspberry/ServerTCP.c)
+target_link_libraries(RASPBE COMMON -lavformat -lavcodec -lavutil -lavdevice -lswscale)
+
+add_library(ODROID  odroid/UDPReception.c
+                    odroid/ClientTCP.c
+                    odroid/Display.c)
+target_link_libraries(ODROID COMMON -lSDL2 -lavformat -lavcodec -lavutil -lavdevice -lswscale ${CMAKE_THREAD_LIBS_INIT})
+
+add_executable(TestCapture TestCapture.c)
+target_link_libraries(TestCapture COMMON)
+
+add_executable(RaspberryMain RaspberryMain.c)
+target_link_libraries(RaspberryMain RASPBE)
+
+add_executable(OdroidMain OdroidMain.c)
+target_link_libraries(OdroidMain ODROID)
