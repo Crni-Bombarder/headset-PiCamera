@@ -1,5 +1,5 @@
-#ifndef UDPRECEPTION_H
-#define UDPRECEPTION_H
+#ifndef ODROID_H
+#define ODROID_H
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,8 +18,12 @@
 #define RECP_INPUT_FORMAT "rtp"
 
 void initNetwork(void);
-Frame* initReception(char* url);
+Frame* initVideoReception(char* url);
+void initAudioStream(char* sampleRate);
+void streamAudioFile(char* fileName);
+void stopStream(void);
+
 void getNewFrame(FILE* log);
-void endReception(void);
+void endVideoReception(void);
 
 #endif

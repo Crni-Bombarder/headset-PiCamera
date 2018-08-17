@@ -17,7 +17,7 @@ void initNetwork(void)
     avformat_network_init();
 }
 
-Frame* initReception(char* url)
+Frame* initVideoReception(char* url)
 {
     AVCodecParameters* codecpar;
     AVDictionary* options = NULL;
@@ -161,7 +161,7 @@ void getNewFrame(FILE* fd)
     }
 }
 
-void endReception(void)
+void endVideoReception(void)
 {
     avcodec_send_packet(decoderCtx, NULL);
     avformat_close_input(&fmtCtx);

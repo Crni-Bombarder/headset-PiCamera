@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
         if (start)
         {
             recepSDPFile(SDP_FILE);
-            frame = initReception(SDP_FILE);
+            frame = initVideoReception(SDP_FILE);
             resizeTexture(frame->width, frame->height);
             reception = 1;
             start = 0;
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
         usleep(10);
     }
 
-    if (reception) endReception();
+    if (reception) endVideoReception();
 
     pthread_join(thread, NULL);
     destroyWindow();
