@@ -1,10 +1,21 @@
-#include "UDPReception.h"
+#include "Odroid.h"
+
+#define SDP_FILE_SIZE 10000
 
 AVFormatContext* fmtCtx;
 AVCodecContext* decoderCtx;
 AVFrame* avframe;
 AVPacket packet;
 struct SwsContext* swsCtx;
+
+AVFormatContext* fmtCtxAudioO;
+AVFormatContext* fmtCtxAudioI;
+AVCodecContext* audioEncoder;
+AVCodecContext* audioDecoder;
+AVPacket packetAudioO;
+AVFrame* avframeAudioO;
+AVPacket packetAudioI;
+AVFrame* avframeAudioI;
 
 int streamID;
 
@@ -100,6 +111,83 @@ Frame* initVideoReception(char* url)
                             SWS_BILINEAR, NULL, NULL, NULL);
     frame = dframe;
     return dframe;
+}
+
+int initAudioStream(char* url, char* path_sdp)
+{
+    AVCodec* codecAudio = NULL;
+
+    //Open Output audio stream
+    fmtCtxAudioO = NULL;
+    if(avformat_alloc_output_context2(&fmtCtxAudioO, NULL, NULL, url) < 0)
+    {
+        perror("Cannot alloc the output context - alloc_output_context2");
+        exit(1);
+    }
+
+    if(avio_open(&fmtCtxAudioO->pb, url, AVIO_FLAG_WRITE) < 0)
+    {
+        fprintf(stderr, "Cannot open the IO context %s - avio_open", url);
+        exit(1);
+    }
+
+    //Finding the codec for the output, and setting his informations
+    codecAudio = avcodec_find_encoder(AV_CODEC_ID_MP2);
+    if (!codecAudio)
+    {
+        perror("Could not find the encoder");
+        exit(1);
+    }
+    audioEncoder = avcodec_alloc_context3(codecAudio);
+    if (!audioEncoder)
+    {
+        perror("Could not allocate the decoder");
+        exit(1);
+    }
+
+    audioEncoder->bit_rate = AUDIO_BITRATE;
+    audioEncoder->sample_fmt = AV_SAMPLE_FMT_S16;
+    audioEncoder->sample_rate = AUDIO_SAMPLE_RATE;
+    audioEncoder->channel_layout = AV_CH_LAYOUT_STEREO;
+    audioEncoder->channels = AUDIO_CHANNELS;
+
+    if(avcodec_open2(audioEncoder, codecAudio, NULL) < 0)
+    {
+        perror("Error opening the encoder");
+        exit(1);
+    }
+
+    // Open a new stream, and set the codec information
+    AVStream* newStream = avformat_new_stream(fmtCtxAudioO, NULL);
+    newStream->id = fmtCtxAudioO->nb_streams-1;
+
+    avcodec_parameters_from_context(fmtCtxAudioO->streams[0]->codecpar, audioEncoder);
+
+    //Start the streams
+    if(avformat_write_header(fmtCtxAudioO, NULL) < 0)
+    {
+        perror("Error starting the stream");
+        exit(1);
+    }
+
+    //Initialize the packet, and alloc the frame
+    av_init_packet(&packetAudioO);
+    avframeAudioO = av_frame_alloc();
+
+    //Save SDP file
+    char sdp_file[SDP_FILE_SIZE];
+    av_sdp_create(&fmtCtxAudioO, 1, sdp_file, SDP_FILE_SIZE);
+    FILE* fd = fopen(path_sdp, "w");
+    if (!fd)
+    {
+        perror("Error creating the file ");
+        exit(1);
+    }
+    fwrite(sdp_file, strlen(sdp_file), 1, fd);
+    fclose(fd);
+
+    //Return file size
+    return strlen(sdp_file);
 }
 
 void getNewFrame(FILE* fd)

@@ -28,11 +28,11 @@ add_library(COMMON  common/Frame.c
                     common/Packet.c)
 #target_link_libraries(COMMON)
 
-add_library(RASPBE  raspberry/UDPStreaming.c
+add_library(RASPBE  raspberry/Raspberry.c
                     raspberry/ServerTCP.c)
 target_link_libraries(RASPBE COMMON -lavformat -lavcodec -lavutil -lavdevice -lswscale)
 
-add_library(ODROID  odroid/UDPReception.c
+add_library(ODROID  odroid/Odroid.c
                     odroid/ClientTCP.c
                     odroid/Display.c)
 target_link_libraries(ODROID COMMON -lSDL2 -lavformat -lavcodec -lavutil -lavdevice -lswscale ${CMAKE_THREAD_LIBS_INIT})

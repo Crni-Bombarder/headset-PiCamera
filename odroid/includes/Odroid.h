@@ -15,11 +15,15 @@
 
 #include "Frame.h"
 
-#define RECP_INPUT_FORMAT "rtp"
+#define OUTPUT_AUDIO_CODEC "rtp"
+
+#define AUDIO_BITRATE 64000
+#define AUDIO_SAMPLE_RATE 44100
+#define AUDIO_CHANNELS 2
 
 void initNetwork(void);
 Frame* initVideoReception(char* url);
-void initAudioStream(char* sampleRate);
+int initAudioStream(char* url, char* path_sdp);
 void streamAudioFile(char* fileName);
 void stopStream(void);
 

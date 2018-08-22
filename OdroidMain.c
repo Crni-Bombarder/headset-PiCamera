@@ -3,7 +3,7 @@
 #include <time.h>
 #include <pthread.h>
 
-#include "UDPReception.h"
+#include "Odroid.h"
 #include "ClientTCP.h"
 #include "Frame.h"
 #include "Display.h"
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
         if (stop)
         {
             if (reception)
-                endReception();
+                endVideoReception();
             reception = 0;
             stop = 0;
         }
@@ -64,6 +64,7 @@ int main(int argc, char* argv[])
             getNewFrame(NULL);
             if (displaying)
                 displayFrame(frame);
+            //Signal processing
         }
         usleep(10);
     }

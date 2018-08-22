@@ -1,5 +1,5 @@
-#ifndef UDP_STREAMING_H
-#define UDP_STREAMING_H
+#ifndef RASPBERRY_H
+#define RASPBERRY_H
 
 #include <stdlib.h>
 #include <stdio.h>

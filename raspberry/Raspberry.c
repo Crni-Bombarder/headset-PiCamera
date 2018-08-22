@@ -1,4 +1,4 @@
-#include "UDPStreaming.h"
+#include "Raspberry.h"
 
 #define SDP_FILE_SIZE 10000
 
@@ -11,13 +11,13 @@ AVPacket            pkt;
 int streamID;
 int frameSend;
 
-char* deviceName = NULL;
-char* sizeX = NULL;
-char* sizeY = NULL;
-char* fps = NULL;
-char* format = NULL;
-char* bitrate = NULL;
-char* quality = NULL;
+char* deviceName    = NULL;
+char* sizeX         = NULL;
+char* sizeY         = NULL;
+char* fps           = NULL;
+char* format        = NULL;
+char* bitrate       = NULL;
+char* quality       = NULL;
 
 char* getDeviceName(void)
 {
@@ -228,7 +228,7 @@ void dumpParameters(void)
         printf("quality=%s\n", quality);
 }
 
-void clanConf(void)
+void cleanConf(void)
 {
     if (deviceName != NULL)
     {
@@ -331,7 +331,7 @@ int initCommunication(char* url, char* path_sdp)
     fmtCtxO = NULL;
     if(avformat_alloc_output_context2(&fmtCtxO, NULL, OUTPUT_FORMAT, url) < 0)
     {
-        perror("Fuck");
+        perror("Cannot alloc the output context - alloc_output_context2");
         exit(1);
     }
 
@@ -384,7 +384,6 @@ void sendNewFrame(void)
     pkt.stream_index = 0;
     pkt.pts = frameSend;
     pkt.dts = frameSend++;
-    frameSend++;
 
     if (av_write_frame(fmtCtxO, &pkt) < 0)
     {
@@ -398,7 +397,7 @@ void sendNewFrame(void)
 void stopCommunication(void)
 {
     // Closing and freeing the output
-    av_interleaved_write_frame(fmtCtxO, NULL);
+    av_write_frame(fmtCtxO, NULL);
     av_write_trailer(fmtCtxO);
     avio_close(fmtCtxO->pb);
     avformat_free_context(fmtCtxO);
