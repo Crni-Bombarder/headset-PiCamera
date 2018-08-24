@@ -16,8 +16,13 @@ AVPacket packetAudioO;
 AVFrame* avframeAudioO;
 AVPacket packetAudioI;
 AVFrame* avframeAudioI;
+AVFrame* avframeSilent;
+struct SwrContext* swrCtx;
+int sizeOutputBuf;
+int fixeSizeFrame;
 
-int streamID;
+int videoStreamID;
+int audioStreamID;
 
 Frame* frame;
 uint8_t* dataFrame[8];
@@ -62,14 +67,14 @@ Frame* initVideoReception(char* url)
         exit(1);
     }
 
-    streamID = av_find_best_stream(fmtCtx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
-    if (streamID < 0)
+    videoStreamID = av_find_best_stream(fmtCtx, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
+    if (videoStreamID < 0)
     {
         perror("Could not find a video stream\n");
         exit(1);
     }
 
-    codecpar = fmtCtx->streams[streamID]->codecpar;
+    codecpar = fmtCtx->streams[videoStreamID]->codecpar;
     dec = avcodec_find_decoder(codecpar->codec_id);
     if (dec == NULL)
     {
@@ -119,7 +124,7 @@ int initAudioStream(char* url, char* path_sdp)
 
     //Open Output audio stream
     fmtCtxAudioO = NULL;
-    if(avformat_alloc_output_context2(&fmtCtxAudioO, NULL, NULL, url) < 0)
+    if(avformat_alloc_output_context2(&fmtCtxAudioO, NULL, OUTPUT_AUDIO_CODEC, url) < 0)
     {
         perror("Cannot alloc the output context - alloc_output_context2");
         exit(1);
@@ -170,9 +175,34 @@ int initAudioStream(char* url, char* path_sdp)
         exit(1);
     }
 
+    //Can the encoder take variable size frame or not ?
+    if(AV_CODEC_CAP_VARIABLE_FRAME_SIZE & codecAudio->capabilities)
+    {
+        fixeSizeFrame = 1;
+        sizeOutputBuf = audioEncoder->frame_size;
+    } else {
+        fixeSizeFrame = 0;
+    }
+
     //Initialize the packet, and alloc the frame
     av_init_packet(&packetAudioO);
     avframeAudioO = av_frame_alloc();
+    sizeOutputBuf = INIT_SIZE_BUF;
+    av_samples_alloc(avframeAudioO->data,
+                     avframeAudioO->linesize,
+                     AUDIO_CHANNELS,
+                     sizeOutputBuf,
+                     AV_SAMPLE_FMT_S16,
+                     0);
+    avframeAudioO->format = AV_SAMPLE_FMT_S16;
+    avframeSilent = av_frame_alloc();
+    av_samples_alloc(avframeSilent->data,
+                     avframeSilent->linesize,
+                     AUDIO_CHANNELS,
+                     NMB_SILENT_SAMPLE,
+                     AV_SAMPLE_FMT_S16,
+                     0);
+    avframeSilent->format = AV_SAMPLE_FMT_S16;
 
     //Save SDP file
     char sdp_file[SDP_FILE_SIZE];
@@ -188,6 +218,93 @@ int initAudioStream(char* url, char* path_sdp)
 
     //Return file size
     return strlen(sdp_file);
+}
+
+int streamAudioFile(char* fileName)
+{
+    int ret;
+    AVCodecParameters* codecpar;
+    AVCodec* audioCodec = NULL;
+
+    fmtCtxAudioI = NULL;
+    audioDecoder = NULL;
+    swrCtx = NULL;
+
+    ret = avformat_open_input(&fmtCtxAudioI, fileName, NULL, NULL);
+    if (ret < 0)
+    {
+        printf("Cannot open the file : %s, error code : %d\n", fileName, ret);
+        return -1;
+    }
+
+    if(avformat_find_stream_info(fmtCtxAudioI, NULL) < 0)
+    {
+        perror("Impossible to retrieve stream information");
+        exit(1);
+    }
+
+    audioStreamID = av_find_best_stream(fmtCtxAudioI, AVMEDIA_TYPE_AUDIO, -1, -1, NULL, 0);
+    if (audioStreamID < 0)
+    {
+        printf("Could not find an audio stream in the file %s\n", fileName);
+        stopFileStream();
+        return -1;
+    }
+    codecpar = fmtCtxAudioI->streams[audioStreamID]->codecpar;
+
+    audioCodec = avcodec_find_decoder(codecpar->codec_id);
+    if(!audioCodec)
+    {
+        printf("Could not find the decoder for the file %s\n", fileName);
+        stopFileStream();
+        return -1;
+    }
+
+    audioDecoder = avcodec_alloc_context3(audioCodec);
+    if (!audioDecoder)
+    {
+        perror("Could not alloc the audio decoder : out of memory ?\n");
+        exit(1);
+    }
+
+    avcodec_parameters_to_context(audioDecoder, codecpar);
+
+    if (avcodec_open2(audioDecoder, audioCodec, NULL) < 0)
+    {
+        perror("Could not open the decoder\n");
+        exit(1);
+    }
+
+    av_init_packet(&packetAudioI);
+    avframeAudioI = av_frame_alloc();
+
+    swrCtx = swr_alloc();
+
+    av_opt_set_int(swrCtx, "in_channel_layout",    codecpar->channel_layout, 0);
+    av_opt_set_int(swrCtx, "in_sample_rate",       codecpar->sample_rate, 0);
+    av_opt_set_sample_fmt(swrCtx, "in_sample_fmt", codecpar->format, 0);
+    av_opt_set_int(swrCtx, "out_channel_layout",    audioEncoder->channel_layout, 0);
+    av_opt_set_int(swrCtx, "out_sample_rate",       audioEncoder->sample_rate, 0);
+    av_opt_set_sample_fmt(swrCtx, "out_sample_fmt", audioEncoder->sample_fmt, 0);
+
+    swr_init(swrCtx);
+
+    return 0;
+}
+
+void stopFileStream()
+{
+    if (swrCtx)
+        swr_free(&swrCtx);
+    if (audioDecoder)
+    {
+        avcodec_send_packet(audioDecoder, NULL);
+        avcodec_free_context(&audioDecoder);
+    }
+    if (fmtCtxAudioI)
+    {
+        avformat_close_input(&fmtCtxAudioI);
+    }
 }
 
 void getNewFrame(FILE* fd)

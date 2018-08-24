@@ -35,7 +35,7 @@ target_link_libraries(RASPBE COMMON -lavformat -lavcodec -lavutil -lavdevice -ls
 add_library(ODROID  odroid/Odroid.c
                     odroid/ClientTCP.c
                     odroid/Display.c)
-target_link_libraries(ODROID COMMON -lSDL2 -lavformat -lavcodec -lavutil -lavdevice -lswscale ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(ODROID COMMON -lSDL2 -lavformat -lavcodec -lavutil -lavdevice -lswscale -lswresample ${CMAKE_THREAD_LIBS_INIT})
 
 add_executable(TestCapture TestCapture.c)
 target_link_libraries(TestCapture COMMON)
@@ -45,3 +45,6 @@ target_link_libraries(RaspberryMain RASPBE)
 
 add_executable(OdroidMain OdroidMain.c)
 target_link_libraries(OdroidMain ODROID)
+
+add_executable(TestAudioOdroid TestAudioOdroid.c)
+target_link_libraries(TestAudioOdroid ODROID)
