@@ -18,7 +18,13 @@ int main(int argc, char* argv[])
 
     int sizeFile = initAudioStream(buf, SDP_FILE);
 
-    streamAudioFile("test.mp3");
+    if(streamAudioFile("test.mp3"))
+    {
+        printf("Cannot open the audio file\n");
+        exit(1);
+    }
+
+    while(!sendAudioFrame());
 
     return 0;
 }

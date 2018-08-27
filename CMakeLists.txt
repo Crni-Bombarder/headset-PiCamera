@@ -8,6 +8,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 find_package(FFmpeg REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(Threads REQUIRED)
+find_package( OpenCV REQUIRED )
 
 include_directories(common/includes
                     raspberry/includes
@@ -48,3 +49,6 @@ target_link_libraries(OdroidMain ODROID)
 
 add_executable(TestAudioOdroid TestAudioOdroid.c)
 target_link_libraries(TestAudioOdroid ODROID)
+
+add_executable(Presentation Presentation.cpp)
+target_link_libraries(Presentation ODROID ${OpenCV_LIBS})

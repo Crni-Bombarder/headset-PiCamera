@@ -20,6 +20,7 @@ AVFrame* avframeSilent;
 struct SwrContext* swrCtx;
 int sizeOutputBuf;
 int fixeSizeFrame;
+int audioFrameSend;
 
 int videoStreamID;
 int audioStreamID;
@@ -165,8 +166,14 @@ int initAudioStream(char* url, char* path_sdp)
     // Open a new stream, and set the codec information
     AVStream* newStream = avformat_new_stream(fmtCtxAudioO, NULL);
     newStream->id = fmtCtxAudioO->nb_streams-1;
+    newStream->time_base = av_make_q(1, AUDIO_SAMPLE_RATE);
 
     avcodec_parameters_from_context(fmtCtxAudioO->streams[0]->codecpar, audioEncoder);
+    fmtCtxAudioO->streams[0]->codecpar->frame_size = 1152;
+
+    if (fmtCtxAudioO->oformat->flags & AVFMT_GLOBALHEADER)
+        audioEncoder->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+
 
     //Start the streams
     if(avformat_write_header(fmtCtxAudioO, NULL) < 0)
@@ -182,6 +189,7 @@ int initAudioStream(char* url, char* path_sdp)
         sizeOutputBuf = audioEncoder->frame_size;
     } else {
         fixeSizeFrame = 0;
+        return -1;
     }
 
     //Initialize the packet, and alloc the frame
@@ -195,11 +203,13 @@ int initAudioStream(char* url, char* path_sdp)
                      AV_SAMPLE_FMT_S16,
                      0);
     avframeAudioO->format = AV_SAMPLE_FMT_S16;
+    avframeAudioO->nb_samples = sizeOutputBuf;
+    avframeAudioO->channel_layout = AV_CH_LAYOUT_STEREO;
     avframeSilent = av_frame_alloc();
     av_samples_alloc(avframeSilent->data,
                      avframeSilent->linesize,
                      AUDIO_CHANNELS,
-                     NMB_SILENT_SAMPLE,
+                     sizeOutputBuf,
                      AV_SAMPLE_FMT_S16,
                      0);
     avframeSilent->format = AV_SAMPLE_FMT_S16;
@@ -215,6 +225,8 @@ int initAudioStream(char* url, char* path_sdp)
     }
     fwrite(sdp_file, strlen(sdp_file), 1, fd);
     fclose(fd);
+
+    audioFrameSend = 0;
 
     //Return file size
     return strlen(sdp_file);
@@ -307,6 +319,86 @@ void stopFileStream()
     }
 }
 
+int sendAudioFrame(void)
+{
+    AVFrame* frameToSend;
+    int ret;
+    int currentStream = -1;
+    int outputSamples = 0;
+    int outputSampleTotal = 0;
+    uint8_t* dataOut;
+
+    if (fmtCtxAudioI)
+    {
+        while(1)
+        {
+            //Trying to decode the frame
+            ret = avcodec_receive_frame(audioDecoder, avframeAudioI);
+
+            if (ret < 0)
+            {
+                if (ret != AVERROR(EAGAIN))
+                {
+                    perror("Error decoding the audio packet - avcodec_receive_frame ");
+                    exit(1);
+                }
+                //Grab the packet from the file
+                currentStream = -1;
+                while(currentStream != audioStreamID)
+                {
+                    av_packet_unref(&packetAudioI);
+                    if(av_read_frame(fmtCtxAudioI, &packetAudioI) < 0)
+                    {
+                        stopFileStream();
+                        printf("Error\n");
+                        return -1;
+                    }
+                    currentStream = packetAudioI.stream_index;
+                }
+
+                if (avcodec_send_packet(audioDecoder, &packetAudioI) < 0)
+                {
+                    perror("Error sending the packet to the audio decoder - avcodec_send_packet ");
+                    exit(1);
+                }
+                av_packet_unref(&packetAudioI);
+        } else {
+            break;
+        }
+    }
+
+        //Resample the frame
+        // outputSamples = swr_get_delay(swr, avframeAudioO->sample_rate) + swr_get_out_samples(swrCtx, avframeAudioI->nb_samples);
+        // dataOut = (avframeAudioO->data)[0] + outputSampleTotal;
+        // outputSampleTotal += swr_convert(swrCtx, &dataOut,
+        //                                      avframeAudioO->nb_samples - outputSampleTotal,
+        //                                      (const uint8_t**)avframeAudioI->data,
+        //                                      avframeAudioI->nb_samples);
+        swr_convert_frame(swrCtx, avframeAudioO, avframeAudioI);
+        frameToSend = avframeAudioO;
+    } else {
+        frameToSend = avframeSilent;
+    }
+
+    //Encode the frame
+    avcodec_send_frame(audioEncoder, frameToSend);
+
+    avcodec_receive_packet(audioEncoder, &packetAudioO);
+
+    packetAudioO.pts = audioFrameSend*sizeOutputBuf;
+    packetAudioO.dts = packetAudioO.pts;
+
+    audioFrameSend++;
+
+    //Send the frame
+    av_write_frame(fmtCtxAudioO, &packetAudioO);
+    av_packet_unref(&packetAudioO);
+
+    usleep(10000000*sizeOutputBuf/AUDIO_SAMPLE_RATE);
+
+    return 0;
+}
+
 void getNewFrame(FILE* fd)
 {
     int ret;
@@ -321,7 +413,7 @@ void getNewFrame(FILE* fd)
         {
             if (ret != AVERROR(EAGAIN))
             {
-                perror("Error decoding the packet - avcodec_receive_frame ");
+                perror("Error decoding the video packet - avcodec_receive_frame ");
                 exit(1);
             }
 

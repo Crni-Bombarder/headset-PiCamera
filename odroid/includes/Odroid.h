@@ -22,7 +22,6 @@
 #define AUDIO_SAMPLE_RATE 44100
 #define AUDIO_CHANNELS 2
 #define INIT_SIZE_BUF 1024
-#define NMB_SILENT_SAMPLE 4410
 
 void initNetwork(void);
 Frame* initVideoReception(char* url);
@@ -31,7 +30,7 @@ int streamAudioFile(char* fileName);
 void stopFileStream(void);
 
 void getNewFrame(FILE* log);
-void sendAudioFrame(void);
+int sendAudioFrame(void);
 void endVideoReception(void);
 
 #endif
