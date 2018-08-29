@@ -30,6 +30,7 @@ int streamAudioFile(char* fileName);
 void stopFileStream(void);
 
 void getNewFrame(FILE* log);
+void convertFrame(FILE* log);
 int sendAudioFrame(void);
 void endVideoReception(void);
 

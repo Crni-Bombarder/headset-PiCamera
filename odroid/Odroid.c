@@ -53,7 +53,7 @@ Frame* initVideoReception(char* url)
 
     av_dict_set(&options, "protocol_whitelist", "file,udp,rtp", 0);
 
-    printf("Opening Stream ...");
+    printf("Opening Stream ...", url);
     if(avformat_open_input(&fmtCtx, url, NULL, &options))
     {
         perror("Could not open the input\n");
@@ -105,7 +105,7 @@ Frame* initVideoReception(char* url)
     Frame* dframe = malloc(sizeof(Frame));
     avframe = av_frame_alloc();
     av_init_packet(&packet);
-    av_image_alloc(dataFrame, linesize, x, y, AV_PIX_FMT_BGRA, 1);
+    av_image_alloc(dataFrame, linesize, x, y, AV_PIX_FMT_BGR24, 1);
     av_image_alloc(avframe->data, avframe->linesize, x, y, codecpar->format, 128);
 
     dframe->width = x;
@@ -113,7 +113,7 @@ Frame* initVideoReception(char* url)
     dframe->pitch = linesize[0];
     dframe->data = (char*)dataFrame[0];
     swsCtx = sws_getContext(x, y, codecpar->format,
-                            x, y, AV_PIX_FMT_BGRA,
+                            x, y, AV_PIX_FMT_BGR24,
                             SWS_BILINEAR, NULL, NULL, NULL);
     frame = dframe;
     return dframe;
@@ -443,17 +443,26 @@ void getNewFrame(FILE* fd)
 
     step4 = clock();
 
+    if (fd)
+    {
+        sprintf(buf, "%ld\t%ld\t%ld",   (step2 - step1)*1000000/CLOCKS_PER_SEC,
+                                        (step4 - step3)*1000000/CLOCKS_PER_SEC,
+                                        (step3 - step2)*1000000/CLOCKS_PER_SEC);
+        fwrite(buf, strlen(buf), 1, fd);
+    }
+}
+
+void convertFrame(FILE* fd)
+{
+    clock_t t = clock();
+    char buf[100];
+
     sws_scale(swsCtx, (const uint8_t * const*)avframe->data, avframe->linesize,
                 0, frame->height, dataFrame, linesize);
 
-    step5 = clock();
-
     if (fd)
     {
-        sprintf(buf, "%ld\t%ld\t%ld\t%ld\n",   (step2 - step1)*1000000/CLOCKS_PER_SEC,
-                                            (step4 - step3)*1000000/CLOCKS_PER_SEC,
-                                            (step3 - step2)*1000000/CLOCKS_PER_SEC,
-                                            (step5 - step4)*1000000/CLOCKS_PER_SEC);
+        sprintf(buf, "\t%ld\n", (clock() - t)*1000000/CLOCKS_PER_SEC);
         fwrite(buf, strlen(buf), 1, fd);
     }
 }

@@ -62,6 +62,7 @@ int main(int argc, char* argv[])
         if (reception)
         {
             getNewFrame(NULL);
+            convertFrame(NULL);
             if (displaying)
                 displayFrame(frame);
             //Signal processing
