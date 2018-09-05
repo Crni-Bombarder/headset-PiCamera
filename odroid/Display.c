@@ -10,7 +10,7 @@ void createWindow(int x, int y, int xt, int yt)
     screen = SDL_CreateWindow("Display", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, x, y, 0);
     renderer = SDL_CreateRenderer(screen, -1, 0);
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR24,
+    texture = SDL_CreateTexture(renderer, SDL_FORMAT,
         SDL_TEXTUREACCESS_STREAMING, xt, yt);
 }
 
@@ -30,7 +30,7 @@ void resizeWindow(int x, int y)
 void resizeTexture(int xt, int yt)
 {
     SDL_DestroyTexture(texture);
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+    texture = SDL_CreateTexture(renderer, SDL_FORMAT,
         SDL_TEXTUREACCESS_STREAMING, xt, yt);
 }
 

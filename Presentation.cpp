@@ -60,6 +60,7 @@ void signalProcessingThread(Mat* mat)
     Scalar mean1,dev1;
     double M1, D1;
     int r, g, b;
+    int prec = -1;
 
     while(running)
     {
@@ -98,26 +99,38 @@ void signalProcessingThread(Mat* mat)
         if (M1>15)
         b=1;
 
-        //Mat1b mask = mask1;
         if (r==1)
         {
-            // imshow("Mask", mask1);
-            cout << "Rojo" << endl;
+            if (prec != 1)
+            {
+                cout << "Rojo" << endl;
+                prec = 1;
+            }
         }
         else if (g==1)
         {
-            // imshow("Mask", mask2);
-            cout << "Verde" << endl;
+            if (prec != 2)
+            {
+                cout << "Verde" << endl;
+                prec = 2;
+            }
         }
         else if (b==1)
         {
-            // imshow("Mask", mask3);
-            cout << "Azul" << endl;
+            if (prec != 3)
+            {
+                cout << "Azul" << endl;
+                prec = 3;
+            }
         }
 
         else{
             inRange(hsv, Scalar(0,0, 40), Scalar(5, 5,5), mask4);
-            cout << "Color no seleccionado" << endl;
+            if (prec != 0)
+            {
+                cout << "Color no seleccionado" << endl;
+                prec = 0;
+            }
         }
         // End Color detection
         // ********************
@@ -130,6 +143,8 @@ void signalProcessingThread(Mat* mat)
 int main(int argc, char* argv[]){
 
     const string sdpFile("pres.sdp");
+    FILE* logfile = fopen("log.txt", "a");
+    dup2(fileno(logfile), STDERR_FILENO);
 
     if (argc < 3)
     {
